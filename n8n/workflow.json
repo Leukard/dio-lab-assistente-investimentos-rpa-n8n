@@ -1,0 +1,107 @@
+{
+  "name": "Assistente de Investimentos - RPA & IA Generativa",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes-investimentos",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "id": "webhook-node",
+      "name": "Webhook - Receber Clientes"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.clientes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [470, 300],
+      "id": "split-node",
+      "name": "Separar Clientes"
+    },
+    {
+      "parameters": {
+        "url": "https://leukard.github.io/dio-lab-assistente-investimentos/docs/data.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [690, 300],
+      "id": "csv-fetch-node",
+      "name": "Buscar Opções de Investimento (CSV)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cliente = $('Separar Clientes').item.json;\nconst csvData = $input.first().json;\n\nreturn {\n  json: {\n    nome: cliente.nome,\n    email: cliente.email,\n    saldo: cliente.saldo,\n    perfil: cliente.perfil,\n    opcoes_disponiveis: csvData\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300],
+      "id": "code-match-node",
+      "name": "Cruzar Perfil x Investimentos"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um consultor financeiro especialista. Crie uma mensagem personalizada para o cliente com base nos dados abaixo:\n\n- Nome: {{ $json.nome }}\n- Perfil: {{ $json.perfil }}\n- Saldo Disponível: {{ $json.saldo }}\n- Opções de Investimento Disponíveis: {{ JSON.stringify($json.opcoes_disponiveis) }}\n\nInstruções:\n1. Adote um tom profissional, amigável e personalizado.\n2. Recomende a opção mais alinhada ao perfil de risco do cliente.\n3. Oriente como o saldo atual dele pode ser alocado.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1130, 300],
+      "id": "ai-agent-node",
+      "name": "Agente de IA Generativa"
+    }
+  ],
+  "connections": {
+    "Webhook - Receber Clientes": {
+      "main": [
+        [
+          {
+            "node": "Separar Clientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar Clientes": {
+      "main": [
+        [
+          {
+            "node": "Buscar Opções de Investimento (CSV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Opções de Investimento (CSV)": {
+      "main": [
+        [
+          {
+            "node": "Cruzar Perfil x Investimentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cruzar Perfil x Investimentos": {
+      "main": [
+        [
+          {
+            "node": "Agente de IA Generativa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
